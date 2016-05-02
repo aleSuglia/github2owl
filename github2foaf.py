@@ -6,12 +6,19 @@ from github import Github
 from scraper import build_graph
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 5:
         print("Invalid number of parameters!")
 
-    graph_filename = sys.argv[1]
+    # github2foaf
+    # fanizzi2016
+    # mnielsen
 
-    github = Github("github2foaf", "fanizzi2016")
+    graph_filename = sys.argv[1]
+    github_username = sys.argv[2]
+    github_password = sys.argv[3]
+    seed_username = sys.argv[4]
+
+    github = Github(github_username, github_password)
 
     print("Number of remaining requests:", github.rate_limiting[0])
     print("Limit of requests:", github.rate_limiting[1])
@@ -20,7 +27,7 @@ if __name__ == "__main__":
           datetime.fromtimestamp(rate_limiting_resettime)
           .strftime('%Y-%m-%d %H:%M:%S'))
 
-    graph = build_graph(github, "mnielsen")
+    graph = build_graph(github, seed_username, max_iterations=50000)
 
     print("Number of remaining requests:", github.rate_limiting[0])
     print("Limit of requests:", github.rate_limiting[1])
