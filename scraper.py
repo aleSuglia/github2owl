@@ -3,6 +3,8 @@ from enum import Enum
 from itertools import islice
 
 import time
+
+from github import GithubException
 from github.Organization import Organization
 from github.NamedUser import NamedUser
 from github.Repository import Repository
@@ -80,73 +82,73 @@ def build_graph(github,
     graph = Graph()
 
     while nodes_queue and num_iterations <= max_iterations:
-        remaining_requests = github.rate_limiting[0]
-        print("-- Remaining requests {0}".format(remaining_requests))
-        if remaining_requests <= 100:
-            time.sleep(3600)
-        node = nodes_queue.popleft()
+        try:
+            remaining_requests = github.rate_limiting[0]
+            print("-- Remaining requests {0}".format(remaining_requests))
+            if remaining_requests <= 100:
+                time.sleep(3600)
+            node = nodes_queue.popleft()
 
-        if isinstance(node, NamedUser):
-            print("-- Username: {0}, iteration {1} of {2}"
-                  .format(node.login, num_iterations, max_iterations))
+            if isinstance(node, NamedUser):
+                print("-- Username: {0}, iteration {1} of {2}"
+                      .format(node.login, num_iterations, max_iterations))
 
-            if node.login not in nodes_iris:
-                nodes_iris[node.login] = github2foaf_users[node.login]
+                if node.login not in nodes_iris:
+                    nodes_iris[node.login] = github2foaf_users[node.login]
 
-            describe_userorg_node(graph, node, github2foaf_users[node.login])
+                describe_userorg_node(graph, node, github2foaf_users[node.login])
 
-            for followed in islice(node.get_following(), 0, max_following):
-                nodes_queue.append(followed)
-                if followed.login not in nodes_iris:
-                    nodes_iris[followed.login] = github2foaf_users[followed.login]
-                graph.add((github2foaf_users[node.login], FOAF.knows, github2foaf_users[followed.login]))
+                for followed in islice(node.get_following(), 0, max_following):
+                    nodes_queue.append(followed)
+                    if followed.login not in nodes_iris:
+                        nodes_iris[followed.login] = github2foaf_users[followed.login]
+                    graph.add((github2foaf_users[node.login], FOAF.knows, github2foaf_users[followed.login]))
 
-            for repo in islice(node.get_repos(), 0, max_repos):
-                nodes_queue.append(repo)
-                if repo.full_name not in nodes_iris:
-                    nodes_iris[repo.full_name] = github2foaf_repos[repo.full_name]
-                graph.add((github2foaf_users[node.login], FOAF.maker, github2foaf_repos[repo.full_name]))
+                for repo in islice(node.get_repos(), 0, max_repos):
+                    nodes_queue.append(repo)
+                    if repo.full_name not in nodes_iris:
+                        nodes_iris[repo.full_name] = github2foaf_repos[repo.full_name]
+                    graph.add((github2foaf_users[node.login], FOAF.maker, github2foaf_repos[repo.full_name]))
 
-        elif isinstance(node, Organization):
-            print("-- Username: {0}, iteration {1} of {2}"
-                  .format(node.name, num_iterations, max_iterations))
+            elif isinstance(node, Organization):
+                print("-- Username: {0}, iteration {1} of {2}"
+                      .format(node.name, num_iterations, max_iterations))
 
-            if node.name not in nodes_iris:
-                nodes_iris[node.name] = github2foaf_orgs[node.name]
+                if node.name not in nodes_iris:
+                    nodes_iris[node.name] = github2foaf_orgs[node.name]
 
-            describe_userorg_node(graph, node, github2foaf_orgs[node.name])
+                describe_userorg_node(graph, node, github2foaf_orgs[node.name])
 
-            for member in islice(node.get_members(), 0, max_members):
-                nodes_queue.append(member)
-                if member.login not in nodes_iris:
-                    nodes_iris[member.login] = github2foaf_users[member.login]
-                graph.add((github2foaf_users[member.login], FOAF.member, github2foaf_orgs[node.name]))
+                for member in islice(node.get_members(), 0, max_members):
+                    nodes_queue.append(member)
+                    if member.login not in nodes_iris:
+                        nodes_iris[member.login] = github2foaf_users[member.login]
+                    graph.add((github2foaf_users[member.login], FOAF.member, github2foaf_orgs[node.name]))
 
-            for repo in islice(node.get_repos(), 0, max_repos):
-                nodes_queue.append(repo)
-                if repo.full_name not in nodes_iris:
-                    nodes_iris[repo.full_name] = github2foaf_repos[repo.full_name]
-                graph.add((github2foaf_orgs[node.name], FOAF.maker, github2foaf_repos[repo.full_name]))
+                for repo in islice(node.get_repos(), 0, max_repos):
+                    nodes_queue.append(repo)
+                    if repo.full_name not in nodes_iris:
+                        nodes_iris[repo.full_name] = github2foaf_repos[repo.full_name]
+                    graph.add((github2foaf_orgs[node.name], FOAF.maker, github2foaf_repos[repo.full_name]))
 
-        elif isinstance(node, Repository):
-            print("-- Repository: {0}, iteration {1} of {2}"
-                  .format(node.full_name, num_iterations, max_iterations))
+            elif isinstance(node, Repository):
+                print("-- Repository: {0}, iteration {1} of {2}"
+                      .format(node.full_name, num_iterations, max_iterations))
 
-            if node.full_name not in nodes_iris:
-                nodes_iris[node.full_name] = github2foaf_repos[node.full_name]
+                if node.full_name not in nodes_iris:
+                    nodes_iris[node.full_name] = github2foaf_repos[node.full_name]
 
-            describe_repo_node(graph, node, github2foaf_repos[node.full_name])
+                describe_repo_node(graph, node, github2foaf_repos[node.full_name])
 
-            for contributor in islice(node.get_contributors(), 0, max_contributors):
-                nodes_queue.append(contributor)
-                if contributor.login not in nodes_iris:
-                    nodes_iris[contributor.login] = github2foaf_users[contributor.login]
-                graph.add((github2foaf_users[contributor.login], DC.contributor, github2foaf_repos[node.full_name]))
+                for contributor in islice(node.get_contributors(), 0, max_contributors):
+                    nodes_queue.append(contributor)
+                    if contributor.login not in nodes_iris:
+                        nodes_iris[contributor.login] = github2foaf_users[contributor.login]
+                    graph.add((github2foaf_users[contributor.login], DC.contributor, github2foaf_repos[node.full_name]))
 
-        num_iterations += 1
-
-        if num_iterations % 50 == 0:
-            time.sleep(20)
+            num_iterations += 1
+        except GithubException:
+            print("Skipped blocked repository.")
 
     graph.namespace_manager.reset()
     graph.namespace_manager.bind("foaf", FOAF)
