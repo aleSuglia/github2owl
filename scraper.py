@@ -81,8 +81,8 @@ def build_graph(github,
 
     while nodes_queue and num_iterations <= max_iterations:
         remaining_requests = github.rate_limiting[0]
+        print("-- Remaining requests {0}".format(remaining_requests))
         if remaining_requests <= 100:
-            print("-- Remaining requests {0}".format(remaining_requests))
             time.sleep(3600)
         node = nodes_queue.popleft()
 
