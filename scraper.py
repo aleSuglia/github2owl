@@ -145,6 +145,9 @@ def build_graph(github,
 
         num_iterations += 1
 
+        if num_iterations % 50 == 0:
+            time.sleep(20)
+
     graph.namespace_manager.reset()
     graph.namespace_manager.bind("foaf", FOAF)
     graph.namespace_manager.bind("dbo", dbpedia_ontology)
