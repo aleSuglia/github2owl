@@ -2,6 +2,7 @@ from collections import deque
 from enum import Enum
 from itertools import islice
 
+import time
 from github.Organization import Organization
 from github.NamedUser import NamedUser
 from github.Repository import Repository
@@ -76,10 +77,13 @@ def build_graph(github,
     nodes_queue = deque([get_seed_node(github, seed_name, seed_type)])
     nodes_iris = {}
     num_iterations = 1
-
     graph = Graph()
 
     while nodes_queue and num_iterations <= max_iterations:
+        remaining_requests = github.rate_limiting[0]
+        if remaining_requests <= 100:
+            print("-- Remaining requests {0}".format(remaining_requests))
+            time.sleep(3600)
         node = nodes_queue.popleft()
 
         if isinstance(node, NamedUser):
