@@ -21,8 +21,8 @@ class SeedType(Enum):
 github2foaf_users = Namespace("http://github2foaf.org/users#")
 github2foaf_repos = Namespace("http://github2foaf.org/repos#")
 github2foaf_orgs = Namespace("http://github2foaf.org/orgs#")
-dbpedia_ontology = Namespace("http://dbpedia.org/ontology")
-dcmi_type = Namespace("http://purl.org/dc/dcmitype")
+dbpedia_ontology = Namespace("http://dbpedia.org/ontology/")
+dcmi_type = Namespace("http://purl.org/dc/dcmitype/")
 
 
 def describe_repo_node(graph, node, node_iri):
