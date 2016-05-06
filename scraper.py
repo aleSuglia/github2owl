@@ -9,7 +9,7 @@ from github.Organization import Organization
 from github.NamedUser import NamedUser
 from github.Repository import Repository
 from rdflib import Namespace, Graph, RDF, Literal, URIRef
-from rdflib.namespace import FOAF, DC
+from rdflib.namespace import FOAF, DC, XSD
 
 
 class SeedType(Enum):
@@ -18,10 +18,10 @@ class SeedType(Enum):
     org = 3
 
 
-github2foaf_users = Namespace("http://github2foaf.org/users#")
-github2foaf_repos = Namespace("http://github2foaf.org/repos#")
-github2foaf_orgs = Namespace("http://github2foaf.org/orgs#")
-dbpedia_ontology = Namespace("http://dbpedia.org/ontology/")
+github2foaf_users = Namespace("http://github2foaf.org/users/")
+github2foaf_repos = Namespace("http://github2foaf.org/repos/")
+github2foaf_orgs = Namespace("http://github2foaf.org/orgs/")
+doap = Namespace("http://http://usefulinc.com/ns/doap#")
 dcmi_type = Namespace("http://purl.org/dc/dcmitype/")
 
 
@@ -29,34 +29,34 @@ def describe_repo_node(graph, node, node_iri):
     graph.add((node_iri, RDF.type, dcmi_type.Software))
 
     if node.name:
-        graph.add((node_iri, dcmi_type.title, Literal(node.name)))
+        graph.add((node_iri, dcmi_type.title, Literal(node.name, datatype=XSD.string)))
     if node.full_name:
-        graph.add((node_iri, FOAF.name, Literal(node.full_name)))
+        graph.add((node_iri, FOAF.name, Literal(node.full_name, datatype=XSD.string)))
     if node.description:
-        graph.add((node_iri, DC.description, Literal(node.description)))
+        graph.add((node_iri, DC.description, Literal(node.description, datatype=XSD.string)))
     if node.html_url:
-        graph.add((node_iri, FOAF.isPrimaryTopicOf, Literal(node.html_url)))
+        graph.add((node_iri, FOAF.isPrimaryTopicOf, URIRef(node.html_url)))
     languages = node.get_languages()
     if languages:
         for lang_name, lang_id in languages.items():
-            graph.add((node_iri, dbpedia_ontology.programmingLanguage, Literal(lang_name)))
+            graph.add((node_iri, doap["programming-language"], Literal(lang_name, datatype=XSD.string)))
 
 
 def describe_userorg_node(graph, node, node_iri):
     graph.add((node_iri, RDF.type, FOAF.Person if node.type == "User" else FOAF.Organization))
-    graph.add((node_iri, FOAF.nick, Literal(node.login)))
+    graph.add((node_iri, FOAF.nick, Literal(node.login, datatype=XSD.string)))
     if node.name:
-        graph.add((node_iri, FOAF.name, Literal(node.name)))
+        graph.add((node_iri, FOAF.name, Literal(node.name, datatype=XSD.string)))
     if node.avatar_url:
-        graph.add((node_iri, FOAF.img, Literal(node.avatar_url)))
+        graph.add((node_iri, FOAF.img, URIRef(node.avatar_url)))
     if node.location:
-        graph.add((node_iri, FOAF.based_near, Literal(node.location)))
+        graph.add((node_iri, FOAF.based_near, Literal(node.location, datatype=XSD.string)))
     if node.email:
-        graph.add((node_iri, FOAF.mbox, Literal(node.email)))
+        graph.add((node_iri, FOAF.mbox, URIRef("mailto:{0}".format(node.email))))
     if node.blog:
-        graph.add((node_iri, FOAF.homepage, Literal(node.blog)))
+        graph.add((node_iri, FOAF.homepage, URIRef(node.blog)))
     if node.html_url:
-        graph.add((node_iri, FOAF.isPrimaryTopicOf, Literal(node.html_url)))
+        graph.add((node_iri, FOAF.isPrimaryTopicOf, URIRef(node.html_url)))
 
 
 def get_seed_node(github, seed_name, seed_type):
@@ -79,7 +79,15 @@ def build_graph(github,
     nodes_queue = deque([get_seed_node(github, seed_name, seed_type)])
     nodes_iris = {}
     num_iterations = 1
-    graph = Graph()
+    graph = Graph(identifier=URIRef("http://github2foaf.org/"))
+    graph.namespace_manager.reset()
+
+    graph.namespace_manager.bind("g2fu", "http://github2foaf.org/users/")
+    graph.namespace_manager.bind("g2fr", "http://github2foaf.org/repos/")
+    graph.namespace_manager.bind("g2fo", "http://github2foaf.org/orgs/")
+    graph.namespace_manager.bind("foaf", "http://xmlns.com/foaf/0.1/")
+    graph.namespace_manager.bind("doap", "http://http://usefulinc.com/ns/doap#")
+    graph.namespace_manager.bind("dcmit", "http://purl.org/dc/dcmitype/")
 
     while nodes_queue and num_iterations <= max_iterations:
         try:
@@ -106,9 +114,10 @@ def build_graph(github,
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     nodes_queue.append(repo)
-                    if repo.full_name not in nodes_iris:
-                        nodes_iris[repo.full_name] = github2foaf_repos[repo.full_name]
-                    graph.add((github2foaf_users[node.login], FOAF.maker, github2foaf_repos[repo.full_name]))
+                    repo_name = repo.full_name.replace("/", "-")
+                    if repo_name not in nodes_iris:
+                        nodes_iris[repo_name] = github2foaf_repos[repo_name]
+                    graph.add((github2foaf_users[node.login], FOAF.maker, github2foaf_repos[repo_name]))
 
             elif isinstance(node, Organization):
                 print("-- Username: {0}, iteration {1} of {2}"
@@ -127,35 +136,28 @@ def build_graph(github,
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     nodes_queue.append(repo)
-                    if repo.full_name not in nodes_iris:
-                        nodes_iris[repo.full_name] = github2foaf_repos[repo.full_name]
-                    graph.add((github2foaf_orgs[node.name], FOAF.maker, github2foaf_repos[repo.full_name]))
+                    repo_name = repo.full_name.replace("/", "-")
+                    if repo_name not in nodes_iris:
+                        nodes_iris[repo_name] = github2foaf_repos[repo_name]
+                    graph.add((github2foaf_orgs[node.name], FOAF.maker, github2foaf_repos[repo_name]))
 
             elif isinstance(node, Repository):
                 print("-- Repository: {0}, iteration {1} of {2}"
                       .format(node.full_name, num_iterations, max_iterations))
+                repo_name = node.full_name.replace("/", "-")
+                if repo_name not in nodes_iris:
+                    nodes_iris[repo_name] = github2foaf_repos[repo_name]
 
-                if node.full_name not in nodes_iris:
-                    nodes_iris[node.full_name] = github2foaf_repos[node.full_name]
-
-                describe_repo_node(graph, node, github2foaf_repos[node.full_name])
+                describe_repo_node(graph, node, github2foaf_repos[repo_name])
 
                 for contributor in islice(node.get_contributors(), 0, max_contributors):
                     nodes_queue.append(contributor)
                     if contributor.login not in nodes_iris:
                         nodes_iris[contributor.login] = github2foaf_users[contributor.login]
-                    graph.add((github2foaf_users[contributor.login], DC.contributor, github2foaf_repos[node.full_name]))
+                    graph.add((github2foaf_users[contributor.login], DC.contributor, github2foaf_repos[repo_name]))
 
             num_iterations += 1
         except GithubException:
             print("Skipped blocked repository.")
-
-    graph.namespace_manager.reset()
-    graph.namespace_manager.bind("foaf", FOAF)
-    graph.namespace_manager.bind("dbo", dbpedia_ontology)
-    graph.namespace_manager.bind("dcmit", dcmi_type)
-    graph.namespace_manager.bind("g2fu", github2foaf_users)
-    graph.namespace_manager.bind("g2fr", github2foaf_repos)
-    graph.namespace_manager.bind("g2fo", github2foaf_orgs)
 
     return graph

@@ -32,7 +32,7 @@ if __name__ == "__main__":
                 max_contributors=50,
                 max_members=50,
                 max_repos=50,
-                max_iterations=10000)
+                max_iterations=100000)
 
     print("Number of remaining requests:", github.rate_limiting[0])
     print("Limit of requests:", github.rate_limiting[1])
@@ -41,4 +41,4 @@ if __name__ == "__main__":
           datetime.fromtimestamp(rate_limiting_resettime)
           .strftime('%Y-%m-%d %H:%M:%S'))
 
-    graph.serialize(destination=graph_filename, format="xml")
+    graph.serialize(destination=graph_filename, format="turtle")
