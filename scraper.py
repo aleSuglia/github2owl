@@ -67,6 +67,13 @@ def get_seed_node(github, seed_name, seed_type):
         return github.get_team(seed_name)
 
 
+def pause_requests(github, margin=500, sleep_time=5400):
+    remaining_requests = github.rate_limiting[0]
+    print("-- Remaining requests {0}".format(remaining_requests))
+    if remaining_requests <= margin:
+        time.sleep(sleep_time)
+
+
 def build_graph(github,
                 seed_name,
                 seed_type,
@@ -90,10 +97,7 @@ def build_graph(github,
 
     while nodes_queue and num_iterations <= max_iterations:
         try:
-            remaining_requests = github.rate_limiting[0]
-            print("-- Remaining requests {0}".format(remaining_requests))
-            if remaining_requests <= 100:
-                time.sleep(3600)
+            pause_requests(github)
             node = nodes_queue.popleft()
 
             if isinstance(node, NamedUser):
@@ -110,6 +114,8 @@ def build_graph(github,
                     if followed.login not in nodes_iris:
                         nodes_iris[followed.login] = github2foaf_users[followed.login]
                     graph.add((github2foaf_users[node.login], FOAF.knows, github2foaf_users[followed.login]))
+
+                pause_requests(github)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     nodes_queue.append(repo)
@@ -132,6 +138,8 @@ def build_graph(github,
                     if member.login not in nodes_iris:
                         nodes_iris[member.login] = github2foaf_users[member.login]
                     graph.add((github2foaf_users[member.login], FOAF.member, github2foaf_orgs[node.name]))
+
+                pause_requests(github)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     nodes_queue.append(repo)
@@ -165,6 +173,8 @@ def build_graph(github,
     while nodes_queue:
         node = nodes_queue.popleft()
         try:
+            pause_requests(github)
+
             if isinstance(node, NamedUser):
                 print("-- Username: {0}, node {1} of {2}"
                       .format(node.login, queue_elements, queue_size))
@@ -177,6 +187,8 @@ def build_graph(github,
                 for followed in islice(node.get_following(), 0, max_following):
                     if followed.login in nodes_iris:
                         graph.add((github2foaf_users[node.login], FOAF.knows, github2foaf_users[followed.login]))
+
+                pause_requests(github)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     repo_name = repo.full_name.replace("/", "-")
@@ -195,6 +207,8 @@ def build_graph(github,
                 for member in islice(node.get_members(), 0, max_members):
                     if member.login in nodes_iris:
                         graph.add((github2foaf_users[member.login], FOAF.member, github2foaf_orgs[node.name]))
+
+                pause_requests(github)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     repo_name = repo.full_name.replace("/", "-")
