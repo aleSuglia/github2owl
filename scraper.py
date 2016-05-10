@@ -71,6 +71,7 @@ def pause_requests(github, margin=500, sleep_time=5400):
     remaining_requests = github.rate_limiting[0]
     print("-- Remaining requests {0}".format(remaining_requests))
     if remaining_requests <= margin:
+        print("-- Sleeping...")
         time.sleep(sleep_time)
 
 
@@ -96,10 +97,9 @@ def build_graph(github,
     graph.namespace_manager.bind("dcmit", "http://purl.org/dc/dcmitype/")
 
     while nodes_queue and num_iterations <= max_iterations:
+        node = nodes_queue.popleft()
         try:
             pause_requests(github)
-            node = nodes_queue.popleft()
-
             if isinstance(node, NamedUser):
                 print("-- Username: {0}, iteration {1} of {2}"
                       .format(node.login, num_iterations, max_iterations))
@@ -164,7 +164,7 @@ def build_graph(github,
                     graph.add((github2foaf_users[contributor.login], DC.contributor, github2foaf_repos[repo_name]))
 
             num_iterations += 1
-        except GithubException:
+        except Exception:
             print("Skipped blocked repository.")
 
     queue_elements = 1
@@ -229,7 +229,9 @@ def build_graph(github,
                         graph.add((github2foaf_users[contributor.login], DC.contributor, github2foaf_repos[repo_name]))
 
             queue_elements += 1
-        except GithubException:
-            print("Skipped blocked repository.")
+
+        except Exception:
+            print("Skipped repository")
+
 
     return graph
