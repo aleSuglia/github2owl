@@ -20,7 +20,7 @@ class SeedType(Enum):
 github2foaf_users = Namespace("http://github2foaf.org/users/")
 github2foaf_repos = Namespace("http://github2foaf.org/repos/")
 github2foaf_orgs = Namespace("http://github2foaf.org/orgs/")
-doap = Namespace("http://http://usefulinc.com/ns/doap#")
+doap = Namespace("http://usefulinc.com/ns/doap#")
 dcmi_type = Namespace("http://purl.org/dc/dcmitype/")
 
 
