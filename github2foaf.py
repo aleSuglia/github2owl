@@ -33,6 +33,7 @@ if __name__ == "__main__":
                         max_contributors=50,
                         max_members=50,
                         max_repos=50,
+                        max_orgs=50,
                         max_iterations=1500)
 
     print("Number of remaining requests:", github.rate_limiting[0])
@@ -42,4 +43,4 @@ if __name__ == "__main__":
           datetime.fromtimestamp(rate_limiting_resettime)
           .strftime('%Y-%m-%d %H:%M:%S'))
 
-    graph.serialize(destination=graph_filename, base="http://uniba.it/github2owl/", format="pretty-xml")
+    graph.serialize(destination=graph_filename, base="", format="pretty-xml")

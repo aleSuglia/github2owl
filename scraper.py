@@ -16,10 +16,9 @@ class SeedType(Enum):
     repo = 2
     org = 3
 
-
-github2foaf_users = Namespace("http://uniba.it/github2owl/users/")
-github2foaf_repos = Namespace("http://uniba.it/github2owl/repos/")
-github2foaf_orgs = Namespace("http://uniba.it/github2owl/orgs/")
+github2owl_users = Namespace("http://github2owl.org/users/")
+github2owl_repos = Namespace("http://github2owl.org/repos/")
+github2owl_orgs = Namespace("http://github2owl.org/orgs/")
 schema = Namespace("http://schema.org/")
 
 
@@ -104,16 +103,16 @@ def build_graph(github,
                 max_contributors=30,
                 max_members=30,
                 max_repos=30,
+                max_orgs=30,
                 max_iterations=5):
     nodes_queue = deque([get_seed_node(github, seed_name, seed_type)])
     nodes_iris = {}
     num_iterations = 1
-    graph = Graph(identifier=URIRef("http://uniba.it/github2owl/"))
-    graph.namespace_manager.reset()
+    graph = Graph(identifier=URIRef("http://github2owl.org/"))
 
-    graph.bind("g2fu", github2foaf_users)
-    graph.bind("g2fr", github2foaf_repos)
-    graph.bind("g2fo", github2foaf_orgs)
+    graph.bind("g2fu", github2owl_users)
+    graph.bind("g2fr", github2owl_repos)
+    graph.bind("g2fo", github2owl_orgs)
     graph.bind("schema", schema)
 
     while nodes_queue and num_iterations <= max_iterations:
@@ -125,15 +124,15 @@ def build_graph(github,
                       .format(node.login, num_iterations, max_iterations))
 
                 if node.login not in nodes_iris:
-                    nodes_iris[node.login] = github2foaf_users[node.login]
+                    nodes_iris[node.login] = github2owl_users[node.login]
 
-                describe_user_node(graph, node, github2foaf_users[node.login])
+                describe_user_node(graph, node, github2owl_users[node.login])
 
                 for followed in islice(node.get_following(), 0, max_following):
                     nodes_queue.append(followed)
                     if followed.login not in nodes_iris:
-                        nodes_iris[followed.login] = github2foaf_users[followed.login]
-                    graph.add((github2foaf_users[node.login], schema.follows, github2foaf_users[followed.login]))
+                        nodes_iris[followed.login] = github2owl_users[followed.login]
+                    graph.add((github2owl_users[node.login], schema.follows, github2owl_users[followed.login]))
 
                 pause_requests(github)
 
@@ -141,23 +140,33 @@ def build_graph(github,
                     nodes_queue.append(repo)
                     repo_name = repo.full_name.replace("/", "-")
                     if repo_name not in nodes_iris:
-                        nodes_iris[repo_name] = github2foaf_repos[repo_name]
-                    graph.add((github2foaf_users[node.login], schema.creator, github2foaf_repos[repo_name]))
+                        nodes_iris[repo_name] = github2owl_repos[repo_name]
+                    graph.add((github2owl_users[node.login], schema.creator, github2owl_repos[repo_name]))
+
+                for orgs in islice(node.get_orgs(), 0, max_orgs):
+                    nodes_queue.append(orgs)
+                    org_name = orgs.login
+                    if org_name not in nodes_iris:
+                        nodes_iris[org_name] = github2owl_orgs[org_name]
+                    graph.add((github2owl_users[node.login], schema.memberOf, github2owl_orgs[org_name]))
+
 
             elif isinstance(node, Organization):
+                org_name = node.login
+                
                 print("-- Organization: {0}, iteration {1} of {2}"
-                      .format(node.name, num_iterations, max_iterations))
+                      .format(org_name, num_iterations, max_iterations))
 
-                if node.name not in nodes_iris:
-                    nodes_iris[node.name] = github2foaf_orgs[node.name]
+                if org_name not in nodes_iris:
+                    nodes_iris[org_name] = github2owl_orgs[org_name]
 
-                describe_org_node(graph, node, github2foaf_orgs[node.name])
+                describe_org_node(graph, node, github2owl_orgs[org_name])
 
                 for member in islice(node.get_members(), 0, max_members):
                     nodes_queue.append(member)
                     if member.login not in nodes_iris:
-                        nodes_iris[member.login] = github2foaf_users[member.login]
-                    graph.add((github2foaf_users[member.login], schema.memberOf, github2foaf_orgs[node.name]))
+                        nodes_iris[member.login] = github2owl_users[member.login]
+                    graph.add((github2owl_users[member.login], schema.memberOf, github2owl_orgs[org_name]))
 
                 pause_requests(github)
 
@@ -165,23 +174,23 @@ def build_graph(github,
                     nodes_queue.append(repo)
                     repo_name = repo.full_name.replace("/", "-")
                     if repo_name not in nodes_iris:
-                        nodes_iris[repo_name] = github2foaf_repos[repo_name]
-                    graph.add((github2foaf_orgs[node.name], schema.creator, github2foaf_repos[repo_name]))
+                        nodes_iris[repo_name] = github2owl_repos[repo_name]
+                    graph.add((github2owl_orgs[org_name], schema.creator, github2owl_repos[repo_name]))
 
             elif isinstance(node, Repository):
                 print("-- Repository: {0}, iteration {1} of {2}"
                       .format(node.full_name, num_iterations, max_iterations))
                 repo_name = node.full_name.replace("/", "-")
                 if repo_name not in nodes_iris:
-                    nodes_iris[repo_name] = github2foaf_repos[repo_name]
+                    nodes_iris[repo_name] = github2owl_repos[repo_name]
 
-                describe_repo_node(graph, node, github2foaf_repos[repo_name])
+                describe_repo_node(graph, node, github2owl_repos[repo_name])
 
                 for contributor in islice(node.get_contributors(), 0, max_contributors):
                     nodes_queue.append(contributor)
                     if contributor.login not in nodes_iris:
-                        nodes_iris[contributor.login] = github2foaf_users[contributor.login]
-                    graph.add((github2foaf_users[contributor.login], schema.contributor, github2foaf_repos[repo_name]))
+                        nodes_iris[contributor.login] = github2owl_users[contributor.login]
+                    graph.add((github2owl_users[contributor.login], schema.contributor, github2owl_repos[repo_name]))
 
             num_iterations += 1
         except Exception:
@@ -200,54 +209,61 @@ def build_graph(github,
                       .format(node.login, queue_elements, queue_size))
 
                 if node.login not in nodes_iris:
-                    nodes_iris[node.login] = github2foaf_users[node.login]
+                    nodes_iris[node.login] = github2owl_users[node.login]
 
-                describe_user_node(graph, node, github2foaf_users[node.login])
+                describe_user_node(graph, node, github2owl_users[node.login])
 
                 for followed in islice(node.get_following(), 0, max_following):
                     if followed.login in nodes_iris:
-                        graph.add((github2foaf_users[node.login], schema.follows, github2foaf_users[followed.login]))
+                        graph.add((github2owl_users[node.login], schema.follows, github2owl_users[followed.login]))
 
                 pause_requests(github)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     repo_name = repo.full_name.replace("/", "-")
                     if repo_name in nodes_iris:
-                        graph.add((github2foaf_users[node.login], schema.creator, github2foaf_repos[repo_name]))
+                        graph.add((github2owl_users[node.login], schema.creator, github2owl_repos[repo_name]))
+
+                for org in islice(node.get_orgs(), 0, max_orgs):
+                    org_name = org.login
+                    if org_name in nodes_iris:
+                        graph.add((github2owl_users[node.login], schema.memberOf, github2owl_repos[org_name]))
 
             elif isinstance(node, Organization):
-                print("-- Organization: {0}, node {1} of {2}"
-                      .format(node.name, queue_elements, queue_size))
+                org_name = node.login
+                
+                print("-- Organization: {0}, iteration {1} of {2}"
+                      .format(org_name, num_iterations, max_iterations))
 
-                if node.name not in nodes_iris:
-                    nodes_iris[node.name] = github2foaf_orgs[node.name]
+                if org_name not in nodes_iris:
+                    nodes_iris[org_name] = github2owl_orgs[org_name]
 
-                describe_org_node(graph, node, github2foaf_orgs[node.name])
+                describe_org_node(graph, node, github2owl_orgs[org_name])
 
                 for member in islice(node.get_members(), 0, max_members):
                     if member.login in nodes_iris:
-                        graph.add((github2foaf_users[member.login], schema.memberOf, github2foaf_orgs[node.name]))
+                        graph.add((github2owl_users[member.login], schema.memberOf, github2owl_orgs[org_name]))
 
                 pause_requests(github)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     repo_name = repo.full_name.replace("/", "-")
                     if repo_name in nodes_iris:
-                        graph.add((github2foaf_orgs[node.name], schema.creator, github2foaf_repos[repo_name]))
+                        graph.add((github2owl_orgs[org_name], schema.creator, github2owl_repos[repo_name]))
 
             elif isinstance(node, Repository):
                 print("-- Repository: {0}, node {1} of {2}"
                       .format(node.full_name, queue_elements, queue_size))
                 repo_name = node.full_name.replace("/", "-")
                 if repo_name not in nodes_iris:
-                    nodes_iris[repo_name] = github2foaf_repos[repo_name]
+                    nodes_iris[repo_name] = github2owl_repos[repo_name]
 
-                describe_repo_node(graph, node, github2foaf_repos[repo_name])
+                describe_repo_node(graph, node, github2owl_repos[repo_name])
 
                 for contributor in islice(node.get_contributors(), 0, max_contributors):
                     if contributor.login in nodes_iris:
                         graph.add(
-                            (github2foaf_users[contributor.login], schema.contributor, github2foaf_repos[repo_name]))
+                            (github2owl_users[contributor.login], schema.contributor, github2owl_repos[repo_name]))
 
             queue_elements += 1
 
