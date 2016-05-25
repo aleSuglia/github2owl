@@ -1,12 +1,15 @@
 import time
 import validators
+import socket
 from collections import deque
 from enum import Enum
 from itertools import islice
 
+from github import Github
 from github.NamedUser import NamedUser
 from github.Organization import Organization
 from github.Repository import Repository
+from github.GithubException import GithubException
 from rdflib import Namespace, Graph, RDF, Literal, URIRef
 from rdflib.namespace import XSD
 
@@ -89,15 +92,18 @@ def get_seed_node(github, seed_name, seed_type):
         return github.get_team(seed_name)
 
 
-def pause_requests(github, margin=500, sleep_time=5400):
+def pause_requests(github, github_username, github_password, margin=500, sleep_time=350):
     remaining_requests = github.rate_limiting[0]
     print("-- Remaining requests {0}".format(remaining_requests))
-    if remaining_requests <= margin:
+    while github.rate_limiting[0] <= margin:
         print("-- Sleeping...")
         time.sleep(sleep_time)
+        github = Github(github_username, github_password)
 
 
 def build_graph(github,
+                github_username,
+                github_password,
                 seed_name,
                 seed_type,
                 max_following=30,
@@ -120,7 +126,7 @@ def build_graph(github,
     while nodes_queue and num_iterations <= max_iterations:
         node = nodes_queue.popleft()
         try:
-            pause_requests(github)
+            pause_requests(github, github_username, github_password)
             if isinstance(node, NamedUser):
                 print("-- Username: {0}, iteration {1} of {2}"
                       .format(node.login, num_iterations, max_iterations))
@@ -137,7 +143,7 @@ def build_graph(github,
                         nodes_iris[followed.login] = github2owl_users[followed.login]
                     graph.add((github2owl_users[node.login], schema.follows, nodes_iris[followed.login]))
 
-                pause_requests(github)
+                pause_requests(github, github_username, github_password)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     repo_name = repo.full_name.replace("/", "-")
@@ -146,7 +152,9 @@ def build_graph(github,
                     if repo_name not in nodes_iris:
                         nodes_iris[repo_name] = github2owl_repos[repo_name]
                     graph.add((github2owl_users[node.login], schema.creator, nodes_iris[repo_name]))
-                    
+                
+                pause_requests(github, github_username, github_password)
+                
                 for orgs in islice(node.get_orgs(), 0, max_orgs):
                     org_name = orgs.login
                     if org_name not in visited_nodes:
@@ -173,7 +181,7 @@ def build_graph(github,
                         nodes_iris[member.login] = github2owl_users[member.login]
                     graph.add((github2owl_orgs[org_name], schema.member, nodes_iris[member.login]))
 
-                pause_requests(github)
+                pause_requests(github, github_username, github_password)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     repo_name = repo.full_name.replace("/", "-")
@@ -202,6 +210,8 @@ def build_graph(github,
                             nodes_iris[contributor.login] = github2owl_orgs[contributor.login]
                     graph.add((github2owl_repos[repo_name], schema.contributor, nodes_iris[contributor.login]))
                 
+                pause_requests(github, github_username, github_password)
+                
                 repo_creator = node.owner
                 if repo_creator.login not in visited_nodes:
                     nodes_queue.append(repo_creator)
@@ -213,11 +223,13 @@ def build_graph(github,
                 graph.add((github2owl_repos[repo_name], schema.creator, nodes_iris[repo_creator.login]))
                 
                 visited_nodes.add(repo_name)
-            
+
             num_iterations += 1
         except GithubException:
             print("Skipped blocked repository.")
-            
+        except (socket.error, socket.gaierror):
+            print("Connection error! Reconnecting...")
+            github = Github(github_username, github_password)
 
     queue_elements = 1
     queue_size = len(nodes_queue)
@@ -225,7 +237,7 @@ def build_graph(github,
     while nodes_queue:
         node = nodes_queue.popleft()
         try:
-            pause_requests(github)
+            pause_requests(github, github_username, github_password)
 
             if isinstance(node, NamedUser):
                 print("-- Username: {0}, node {1} of {2}"
@@ -240,13 +252,15 @@ def build_graph(github,
                     if followed.login in nodes_iris:
                         graph.add((nodes_iris[node.login], schema.follows, nodes_iris[followed.login]))
 
-                pause_requests(github)
+                pause_requests(github, github_username, github_password)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     repo_name = repo.full_name.replace("/", "-")
                     if repo_name in nodes_iris:
                         graph.add((nodes_iris[node.login], schema.creator, nodes_iris[repo_name]))
-
+                
+                pause_requests(github, github_username, github_password)
+                
                 for org in islice(node.get_orgs(), 0, max_orgs):
                     org_name = org.login
                     if org_name in nodes_iris:
@@ -267,7 +281,7 @@ def build_graph(github,
                     if member.login in nodes_iris:
                         graph.add((nodes_iris[org_name], schema.member, nodes_iris[member.login]))
 
-                pause_requests(github)
+                pause_requests(github, github_username, github_password)
 
                 for repo in islice(node.get_repos(), 0, max_repos):
                     repo_name = repo.full_name.replace("/", "-")
@@ -287,10 +301,14 @@ def build_graph(github,
                     if contributor.login in nodes_iris:
                         graph.add(
                             (nodes_iris[contributor.login], schema.contributor, nodes_iris[repo_name]))
-
+                
             queue_elements += 1
 
         except GithubException:
             print("Skipped repository")
+        except (socket.error, socket.gaierror):
+            print("Connection error! Reconnecting...")
+            github = Github(github_username, github_password)
 
     return graph
+

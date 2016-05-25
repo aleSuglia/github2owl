@@ -28,13 +28,14 @@ if __name__ == "__main__":
           datetime.fromtimestamp(rate_limiting_resettime)
           .strftime('%Y-%m-%d %H:%M:%S'))
 
-    graph = build_graph(github, seed_name, seed_type,
+    graph = build_graph(github, github_username, github_password,
+                        seed_name, seed_type,
                         max_following=50,
                         max_contributors=50,
                         max_members=50,
                         max_repos=50,
                         max_orgs=50,
-                        max_iterations=1500)
+                        max_iterations=2500)
 
     print("Number of remaining requests:", github.rate_limiting[0])
     print("Limit of requests:", github.rate_limiting[1])
