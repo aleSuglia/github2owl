@@ -24,9 +24,9 @@ if __name__ == "__main__":
     for s, p, o in g:
         if str(p) == "http://schema.org/workLocation":
             continue
-        elif str(p) == "http://schema.org/contributor" and "users/" in str(s):
+        elif str(p) == "http://schema.org/contributor" and ("users/" in str(s) or "orgs/" in str(s)):
             continue
-        elif str(p) == "http://schema.org/creator":
+        elif str(p) == "http://schema.org/creator" and ("users/" in str(s) or "orgs/" in str(s)):
             fixed_g.add((o, p, s))
         elif str(p) == "http://schema.org/codeRepository":
             o = Literal(str(o), datatype=schema.URL)
