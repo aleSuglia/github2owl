@@ -48,21 +48,22 @@ def describe_user_node(graph, node, node_iri):
     :param node_iri: Identifier associated to the given node
     """
     graph.add((node_iri, RDF.type, schema.Person))
-    graph.add((node_iri, schema.alternateName, Literal(node.login, datatype=XSD.string)))
+    graph.add((node_iri, schema.alternateName, Literal(node.login, datatype=schema.Text)))
     if node.name:
-        graph.add((node_iri, schema.name, Literal(node.name, datatype=XSD.string)))
+        graph.add((node_iri, schema.name, Literal(node.name, datatype=schema.Text)))
     if node.avatar_url:
-        graph.add((node_iri, schema.image, URIRef(node.avatar_url)))
-    if node.location:
-        graph.add((node_iri, schema.workLocation, Literal(node.location, datatype=XSD.string)))
+        graph.add((node_iri, schema.image, Literal(node.avatar_url, datatype=schema.URL)))
+    # if node.location:
+    #     graph.add((node_iri, schema.workLocation, Literal(node.location, datatype=XSD.string)))
     if node.email:
         sanitized_email = sanitize(node.email)
         if validators.email(sanitized_email):
-            graph.add((node_iri, schema.email, URIRef("mailto:{0}".format(sanitized_email))))
+            email = "mailto:{0}".format(sanitized_email)
+            graph.add((node_iri, schema.email, Literal(email, datatype=schema.Text)))
     if node.html_url:
         sanitized_url = sanitize(node.html_url)
         if validators.url(node.html_url):
-            graph.add((node_iri, schema.url, URIRef(sanitized_url)))
+            graph.add((node_iri, schema.url, Literal(sanitized_url, datatype=schema.URL)))
 
 
 def describe_org_node(graph, node, node_iri):
@@ -74,21 +75,22 @@ def describe_org_node(graph, node, node_iri):
     :param node_iri: Identifier associated to the given node
     """
     graph.add((node_iri, RDF.type, schema.Organization))
-    graph.add((node_iri, schema.alternateName, Literal(node.login, datatype=XSD.string)))
+    graph.add((node_iri, schema.alternateName, Literal(node.login, datatype=schema.Text)))
     if node.name:
-        graph.add((node_iri, schema.name, Literal(node.name, datatype=XSD.string)))
+        graph.add((node_iri, schema.name, Literal(node.name, datatype=schema.Text)))
     if node.avatar_url:
-        graph.add((node_iri, schema.logo, URIRef(node.avatar_url)))
+        graph.add((node_iri, schema.image, Literal(node.avatar_url, datatype=schema.URL)))
     if node.location:
-        graph.add((node_iri, schema.location, Literal(node.location, datatype=XSD.string)))
+        graph.add((node_iri, schema.location, Literal(node.location, datatype=schema.Text)))
     if node.email:
         sanitized_email = sanitize(node.email)
         if validators.email(sanitized_email):
-            graph.add((node_iri, schema.email, URIRef("mailto:{0}".format(sanitized_email))))
+            email = "mailto:{0}".format(sanitized_email)
+            graph.add((node_iri, schema.email, Literal(email, datatype=schema.Text)))
     if node.html_url:
         sanitized_url = sanitize(node.html_url)
         if validators.url(node.html_url):
-            graph.add((node_iri, schema.url, URIRef(sanitized_url)))
+            graph.add((node_iri, schema.url, Literal(sanitized_url, datatype=schema.URL)))
 
 
 def describe_repo_node(graph, node, node_iri):
@@ -101,17 +103,17 @@ def describe_repo_node(graph, node, node_iri):
     """
     graph.add((node_iri, RDF.type, schema.SoftwareSourceCode))
     if node.html_url:
-        graph.add((node_iri, schema.codeRepository, URIRef(node.html_url)))
+        graph.add((node_iri, schema.codeRepository, Literal(node.html_url, datatype=schema.URL)))
     if node.name:
-        graph.add((node_iri, schema.alternateName, Literal(node.name, datatype=XSD.string)))
+        graph.add((node_iri, schema.alternateName, Literal(node.name, datatype=schema.Text)))
     if node.full_name:
-        graph.add((node_iri, schema.name, Literal(node.full_name, datatype=XSD.string)))
+        graph.add((node_iri, schema.name, Literal(node.full_name, datatype=schema.Text)))
     if node.description:
-        graph.add((node_iri, schema.description, Literal(node.description, datatype=XSD.string)))
+        graph.add((node_iri, schema.description, Literal(node.description, datatype=schema.Text)))
     languages = node.get_languages()
     if languages:
         for lang_name, lang_id in languages.items():
-            graph.add((node_iri, schema.programmingLanguage, Literal(lang_name, datatype=XSD.string)))
+            graph.add((node_iri, schema.programmingLanguage, Literal(lang_name, datatype=schema.Text)))
 
 
 def get_seed_node(github, seed_name, seed_type):
@@ -366,10 +368,10 @@ def build_graph(github,
 
                 describe_repo_node(graph, node, github2owl_repos[repo_name])
 
-                for contributor in islice(node.get_contributors(), 0, max_contributors):
-                    if contributor.login in nodes_iris:
-                        graph.add(
-                            (nodes_iris[contributor.login], schema.contributor, nodes_iris[repo_name]))
+                # for contributor in islice(node.get_contributors(), 0, max_contributors):
+                #     if contributor.login in nodes_iris:
+                #         graph.add(
+                #             (nodes_iris[contributor.login], schema.contributor, nodes_iris[repo_name]))
 
             queue_elements += 1
 
