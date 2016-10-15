@@ -9,9 +9,9 @@ if __name__ == "__main__":
     if len(sys.argv) != 6:
         print("Invalid number of parameters!")
 
-    # github2foaf
-    # fanizzi2016
-    # mnielsen
+    # username:  github2foaf
+    # password:  fanizzi2016
+    # seed name: mnielsen
 
     graph_filename = sys.argv[1]
     github_username = sys.argv[2]

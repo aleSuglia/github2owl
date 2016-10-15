@@ -53,8 +53,6 @@ def describe_user_node(graph, node, node_iri):
         graph.add((node_iri, schema.name, Literal(node.name, datatype=schema.Text)))
     if node.avatar_url:
         graph.add((node_iri, schema.image, Literal(node.avatar_url, datatype=schema.URL)))
-    # if node.location:
-    #     graph.add((node_iri, schema.workLocation, Literal(node.location, datatype=XSD.string)))
     if node.email:
         sanitized_email = sanitize(node.email)
         if validators.email(sanitized_email):
@@ -367,11 +365,6 @@ def build_graph(github,
                     nodes_iris[repo_name] = github2owl_repos[repo_name]
 
                 describe_repo_node(graph, node, github2owl_repos[repo_name])
-
-                # for contributor in islice(node.get_contributors(), 0, max_contributors):
-                #     if contributor.login in nodes_iris:
-                #         graph.add(
-                #             (nodes_iris[contributor.login], schema.contributor, nodes_iris[repo_name]))
 
             queue_elements += 1
 
